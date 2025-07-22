@@ -256,7 +256,7 @@ $user->notify(SendSmsNotification::courseEnrollment('09123456789', 'Laravel Cour
 
 When adding custom templates, remember:
 
-1. **Create in Ghasedak Panel**: First create your template at [panel.ghasedaksms.com](https://panel.ghasedaksms.com)
+1. **Create in Ghasedak Panel**: First create your template at [ghasedak.me](https://ghasedak.me)
 2. **Add to Config**: Add template mapping to `config/ghasedak.php`
 3. **Parameter Limit**: Maximum 3 parameters (`%param1%`, `%param2%`, `%param3%`)
 
@@ -314,7 +314,7 @@ try {
 
 ⚠️ **Important**: Before using template-based SMS, you must:
 
-1. **Create templates in Ghasedak panel** at [panel.ghasedaksms.com](https://panel.ghasedaksms.com)
+1. **Create templates in Ghasedak panel** at [ghasedak.me](https://ghasedak.me)
 2. Go to `SMS Panel > Templates > Create Template`
 3. Create your template with parameters like `%param1%`, `%param2%`, `%param3%`
 4. Get the template name from your panel
@@ -345,7 +345,7 @@ Template Text: کد تایید شما: %param1%
 
 ### 1. Create Template in Ghasedak Panel
 
-1. Visit [panel.ghasedaksms.com](https://panel.ghasedaksms.com) and login
+1. Visit [ghasedak.me](https://ghasedak.me) and login
 2. Go to **SMS Panel > Templates**
 3. Click **Create New Template**
 4. Fill template details:

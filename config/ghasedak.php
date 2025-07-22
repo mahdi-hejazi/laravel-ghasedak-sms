@@ -13,7 +13,7 @@ return [
 
     'api_key' => env('GHASEDAK_API_KEY'),
 
-    'sender' => env('GHASEDAK_SENDER', '10008566'),
+    'sender' => env('GHASEDAK_SENDER'),
 
     /*
     |--------------------------------------------------------------------------
@@ -46,8 +46,8 @@ return [
     */
 
     'api' => [
-        'verify_url' => 'http://api.ghasedaksms.com/v2/send/verify',
-        'simple_url' => 'http://api.ghasedaksms.com/v2/sms/send/simple',
+        'verify_url' => 'https://api.ghasedak.me/v2/verification/send/simple',
+        'simple_url' => 'https://api.ghasedaksms.com/v2/sms/send/simple',
         'timeout' => 30,
     ],
 
