@@ -258,7 +258,8 @@ When adding custom templates, remember:
 
 1. **Create in Ghasedak Panel**: First create your template at [ghasedak.me](https://ghasedak.me)
 2. **Add to Config**: Add template mapping to `config/ghasedak.php`
-3. **Parameter Limit**: Maximum 3 parameters (`%param1%`, `%param2%`, `%param3%`)
+3. **Parameter Limit**: Maximum 10
+4. parameters (`%param1%`, `%param2%`, ... `%param10%`)
 
 **Example Custom Template Setup:**
 
@@ -316,7 +317,7 @@ try {
 
 1. **Create templates in Ghasedak panel** at [ghasedak.me](https://ghasedak.me)
 2. Go to `SMS Panel > Templates > Create Template`
-3. Create your template with parameters like `%param1%`, `%param2%`, `%param3%`
+3. Create your template with parameters like `%param1%`, `%param2%`, `%param3%`, ... `%param10%`
 4. Get the template name from your panel
 5. Add template name to your config
 
@@ -336,9 +337,9 @@ Define your SMS templates in `config/ghasedak.php`:
 **Example Ghasedak Template:**
 ```text
 Template Name: verifyCodeTemplate
-Template Text: کد تایید شما: %param1% 
-              این کد تا 5 دقیقه معتبر است.
-              شرکت شما
+Template Text: کد تایید شماکد تایید شما: %param1% 
+              نام شرکت: %param2%
+              این کد تا %param3% دقیقه معتبر است.
 ```
 
 ## Step-by-Step Template Setup
@@ -453,6 +454,15 @@ docker-compose exec php vendor/bin/phpunit
  docker-compose exec php vendor/bin/phpunit --group integration
  ```
 Note: Mock tests use fake responses and don't send real SMS. Integration tests send actual SMS and will cost money.
+
+## API Updates
+
+This package uses the latest Ghasedak REST API (v1) with:
+- ✅ New endpoints (`gateway.ghasedak.me`)
+- ✅ JSON requests instead of form data
+- ✅ Enhanced error responses
+- ✅ Up to 10 template parameters
+
 ## Contributing
 
 Please see [CONTRIBUTING](CONTRIBUTING.md) for details.

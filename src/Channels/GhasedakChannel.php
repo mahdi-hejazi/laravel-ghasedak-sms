@@ -71,34 +71,39 @@ class GhasedakChannel
         }
 
         try {
-            // Note: Ghasedak template API actually supports only 3 parameters (param1, param2, param3)
-            // But we'll handle up to 10 for backward compatibility, using only first 3
             $requestData = [
-                'type' => 1, // 1 for text message, 2 for voice
-                'receptor' => $receptor,
-                'template' => $template,
+                'receptors' => [
+                    [
+                        'mobile' => $receptor,
+                        'clientReferenceId' => uniqid()
+                    ]
+                ],
+                'templateName' => $template,
+                'isVoice' => false,
+                'udh' => false
             ];
 
-            // Add parameters (Ghasedak API supports max 3 params for templates)
-            if (isset($parameters[0])) $requestData['param1'] = $parameters[0];
-            if (isset($parameters[1])) $requestData['param2'] = $parameters[1];
-            if (isset($parameters[2])) $requestData['param3'] = $parameters[2];
+            // Support up to 10 parameters
+            for ($i = 0; $i < min(count($parameters), 10); $i++) {
+                $requestData['param' . ($i + 1)] = $parameters[$i];
+            }
 
-            // Log if more than 3 parameters provided (for debugging)
-            if (count($parameters) > 3 && $this->shouldLog()) {
-                Log::warning('Ghasedak template SMS: More than 3 parameters provided, using only first 3', [
+
+            // Log if more than 10 parameters provided (for debugging)
+            if (count($parameters) > 10 && $this->shouldLog()) {
+                Log::warning('Ghasedak template SMS: More than 10 parameters provided, using only first 10', [
                     'total_params' => count($parameters),
                     'template' => $template
                 ]);
             }
 
+
             // Send HTTP request to Ghasedak API
             $response = Http::timeout($this->config['api']['timeout'] ?? 30)
                 ->withHeaders([
                     'apikey' => $this->apikey,
-                    'Content-Type' => 'application/x-www-form-urlencoded',
-                    'cache-control' => 'no-cache',
-                ])->asForm()->post($this->config['api']['verify_url'], $requestData);
+                    'Content-Type' => 'application/json',
+                ])->asJson()->post($this->config['api']['verify_url'], $requestData);
 
             // Check if request was successful
             if (!$response->successful()) {
@@ -115,8 +120,8 @@ class GhasedakChannel
             $responseBody = $response->json();
 
             // Check API response
-            if (!isset($responseBody['result']) || $responseBody['result'] !== 'success') {
-                $errorCode = $responseBody['message'] ?? $responseBody['messageids'] ?? 'unknown';
+            if (!isset($responseBody['IsSuccess']) || $responseBody['IsSuccess'] !== true) {
+                $errorCode = $responseBody['StatusCode'] ?? 'unknown';
                 if ($this->shouldLog()) {
                     Log::error('Ghasedak Template SMS API Error', [
                         'error' => $errorCode,
@@ -128,10 +133,10 @@ class GhasedakChannel
                 throw new GhasedakSmsException($errorCode, __('ghasedak::errors.template_send_failed'));
             }
 
-            // Check if messageids is greater than 1000 (successful send indicator)
-            $messageIds = $responseBody['messageids'] ?? 0;
-            if ($messageIds <= 1000) {
-                throw new GhasedakSmsException($messageIds, __('ghasedak::errors.send_failed'));
+            // Get message ID from response
+            $messageIds = $responseBody['Data']['Items'][0]['MessageId'] ?? 0;
+            if ($messageIds <= 0) {
+                throw new GhasedakSmsException('send_failed', __('ghasedak::errors.send_failed'));
             }
 
             if ($this->shouldLog()) {
@@ -183,12 +188,14 @@ class GhasedakChannel
             $requestData = [
                 'message' => $message,
                 'receptor' => $receptor,
-                'sender' => $sender,
+                'lineNumber' => $sender,
+                'clientReferenceId' => uniqid(),
+                'udh' => false
             ];
 
             // Add optional send date if provided
             if (isset($data['senddate']) && !empty($data['senddate'])) {
-                $requestData['senddate'] = $data['senddate'];
+                $requestData['senddate'] = $data['senddate']; // ISO 8601 format
             }
 
             // Add optional checking IDs if provided
@@ -199,10 +206,10 @@ class GhasedakChannel
             // Send HTTP request to Ghasedak API
             $response = Http::timeout($this->config['api']['timeout'] ?? 30)
                 ->withHeaders([
-                    'apikey' => $this->apikey,
-                    'Content-Type' => 'application/x-www-form-urlencoded',
-                    'cache-control' => 'no-cache',
-                ])->asForm()->post($this->config['api']['simple_url'], $requestData);
+                    'ApiKey' => $this->apikey,
+                    'Content-Type' => 'application/json',
+                ])->asJson()->post($this->config['api']['simple_url'], $requestData);
+
 
             // Check if request was successful
             if (!$response->successful()) {
@@ -219,8 +226,8 @@ class GhasedakChannel
             $responseBody = $response->json();
 
             // Check API response
-            if (!isset($responseBody['result']) || $responseBody['result'] !== 'success') {
-                $errorCode = $responseBody['messageids'] ?? $responseBody['message'] ?? 'unknown';
+            if (!isset($responseBody['IsSuccess']) || $responseBody['IsSuccess'] !== true) {
+                $errorCode = $responseBody['StatusCode'] ?? 'unknown';
                 if ($this->shouldLog()) {
                     Log::error('Ghasedak Simple SMS API Error', [
                         'error' => $errorCode,
@@ -233,10 +240,10 @@ class GhasedakChannel
                 throw new GhasedakSmsException($errorCode, __('ghasedak::errors.simple_send_failed'));
             }
 
-            // Check if messageids is greater than 1000 (successful send indicator)
-            $messageIds = $responseBody['messageids'] ?? 0;
-            if ($messageIds <= 1000) {
-                throw new GhasedakSmsException($messageIds, __('ghasedak::errors.send_failed'));
+            // Get message ID from response
+            $messageIds = $responseBody['Data']['MessageId'] ?? 0;
+            if ($messageIds <= 0) {
+                throw new GhasedakSmsException('send_failed', __('ghasedak::errors.send_failed'));
             }
 
             if ($this->shouldLog()) {

@@ -46,8 +46,9 @@ return [
     */
 
     'api' => [
-        'verify_url' => 'https://api.ghasedak.me/v2/verification/send/simple',
-        'simple_url' => 'https://api.ghasedaksms.com/v2/sms/send/simple',
+        'verify_url' => 'https://gateway.ghasedak.me/rest/api/v1/WebService/SendOtpWithParams',
+        'simple_url' => 'https://gateway.ghasedak.me/rest/api/v1/WebService/SendSingleSMS',
+        'account_info_url' => 'https://gateway.ghasedak.me/rest/api/v1/WebService/GetAccountInformation',
         'timeout' => 30,
     ],
 

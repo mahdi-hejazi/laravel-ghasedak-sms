@@ -34,7 +34,7 @@ class SendSmsNotification extends Notification
 
         return [
             'number' => $this->phoneNumber,
-            'parameters' => $parameters, // Ghasedak API uses only first 3
+            'parameters' => $parameters, // Ghasedak API supports up to 10 parameters
             'template' => $this->template,
         ];
     }
