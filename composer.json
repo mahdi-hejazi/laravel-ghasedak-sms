@@ -1,0 +1,61 @@
+{
+    "name": "mahdi-hejazi/laravel-ghasedak-sms",
+    "description": "Modern Laravel package for Ghasedak SMS API with template and simple SMS support",
+    "keywords": [
+        "laravel",
+        "sms",
+        "ghasedak",
+        "notification",
+        "otp",
+        "verification",
+        "iran"
+    ],
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Mahdi Hejazi",
+            "email": "your.email@example.com"
+        }
+    ],
+    "require": {
+        "php": "^8.1|^8.2|^8.3",
+        "illuminate/contracts": "^9.0|^10.0|^11.0|^12.0",
+        "illuminate/http": "^9.0|^10.0|^11.0|^12.0",
+        "illuminate/notifications": "^9.0|^10.0|^11.0|^12.0",
+        "illuminate/support": "^9.0|^10.0|^11.0|^12.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^7.0|^8.0|^9.0|^10.0",
+        "phpunit/phpunit": "^9.5|^10.0|^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "MahdiHejazi\\LaravelGhasedakSms\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "MahdiHejazi\\LaravelGhasedakSms\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit",
+        "test-coverage": "vendor/bin/phpunit --coverage-html coverage"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "MahdiHejazi\\LaravelGhasedakSms\\GhasedakSmsServiceProvider"
+            ],
+            "aliases": {
+                "GhasedakSms": "MahdiHejazi\\LaravelGhasedakSms\\Facades\\GhasedakSms"
+            }
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
