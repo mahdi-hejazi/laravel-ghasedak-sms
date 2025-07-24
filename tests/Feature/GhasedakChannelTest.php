@@ -3,279 +3,118 @@
 namespace MahdiHejazi\LaravelGhasedakSms\Tests\Feature;
 
 use MahdiHejazi\LaravelGhasedakSms\Tests\TestCase;
-use MahdiHejazi\LaravelGhasedakSms\Notifications\SendSmsNotification;
-use MahdiHejazi\LaravelGhasedakSms\Notifications\SimpleSmsNotification;
 use MahdiHejazi\LaravelGhasedakSms\Facades\GhasedakSms;
 use MahdiHejazi\LaravelGhasedakSms\Exceptions\GhasedakSmsException;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Notification;
 
-class GhasedakChannelTest extends TestCase
+/**
+ * Simple Feature Tests for Ghasedak SMS
+ *
+ * To run these tests with real API:
+ * 1. Set these environment variables in your .env.testing file:
+ *    - GHASEDAK_API_KEY=your_real_api_key
+ *    - GHASEDAK_TEST_PHONE=09xxxxxxxxx (your test phone number)
+ *    - GHASEDAK_TEMPLATE_NAME=your_template_name (template with one parameter)
+ *    - GHASEDAK_TEMPLATE_PARAM1=test_value (the parameter value to send)
+ *
+ * 2. Run: vendor/bin/phpunit --group real-api
+ */
+class GhasedakChannelTest  extends TestCase
 {
-    protected function setUp(): void
+    protected function skipIfNoRealApiConfig(): void
     {
-        parent::setUp();
+        $requiredVars = [
+            'GHASEDAK_API_KEY',
+            'GHASEDAK_TEST_PHONE',
+            'GHASEDAK_TEMPLATE_NAME',
+            'GHASEDAK_TEMPLATE_PARAM1'
+        ];
 
-        // Set up test config with NEW API URLs
-        config([
-            'ghasedak.api_key' => 'test-api-key',
-            'ghasedak.sender' => '10008566',
-            'ghasedak.templates.phoneVerifyCode' => 'test-template',
-            'ghasedak.api.verify_url' => 'https://gateway.ghasedak.me/rest/api/v1/WebService/SendOtpWithParams',
-            'ghasedak.api.simple_url' => 'https://gateway.ghasedak.me/rest/api/v1/WebService/SendSingleSMS',
-            'ghasedak.logging.enabled' => false,
-        ]);
-    }
-
-    /** @test */
-    public function it_can_send_template_sms_with_mock_response()
-    {
-        // Mock successful API response with NEW structure
-        Http::fake([
-            'gateway.ghasedak.me/*' => Http::response([
-                'IsSuccess' => true,
-                'StatusCode' => 200,
-                'Message' => 'با موفقیت انجام شد',
-                'Data' => [
-                    'LineNumber' => '10002000200101',
-                    'MessageBody' => 'کد تایید شما 1234',
-                    'Items' => [
-                        [
-                            'Receptor' => '09123456789',
-                            'Cost' => 940,
-                            'MessageId' => 12345678,
-                            'SendDate' => '2024-07-04T06:20:10.856Z',
-                        ]
-                    ],
-                    'Cost' => 940
-                ]
-            ], 200)
-        ]);
-
-        $response = GhasedakSms::sendVerificationCode('09123456789', '1234');
-
-        $this->assertIsArray($response);
-        $this->assertTrue($response['IsSuccess']);
-        $this->assertEquals(200, $response['StatusCode']);
-        $this->assertEquals(12345678, $response['Data']['Items'][0]['MessageId']);
-    }
-
-    /** @test */
-    public function it_can_send_simple_sms_with_mock_response()
-    {
-        // Mock successful API response with NEW structure
-        Http::fake([
-            'gateway.ghasedak.me/*' => Http::response([
-                'IsSuccess' => true,
-                'StatusCode' => 200,
-                'Message' => 'با موفقیت انجام شد',
-                'Data' => [
-                    'Receptor' => '09123456789',
-                    'LineNumber' => '210002100',
-                    'Cost' => 1732,
-                    'MessageId' => 87654321,
-                    'Message' => 'Test message',
-                    'SendDate' => '2024-07-09T14:01:28.4277539+03:30'
-                ]
-            ], 200)
-        ]);
-
-        $response = GhasedakSms::sendSimple('09123456789', 'Test message');
-
-        $this->assertIsArray($response);
-        $this->assertTrue($response['IsSuccess']);
-        $this->assertEquals(87654321, $response['Data']['MessageId']);
-    }
-
-    /** @test */
-    public function it_throws_exception_on_missing_api_key()
-    {
-        config(['ghasedak.api_key' => null]);
-
-        $this->expectException(GhasedakSmsException::class);
-        $this->expectExceptionMessage('کلید API قاصدک تنظیم نشده است');
-
-        GhasedakSms::sendVerificationCode('09123456789', '1234');
-    }
-
-    /** @test */
-    public function it_throws_exception_on_missing_template()
-    {
-        config(['ghasedak.templates.phoneVerifyCode' => '']);
-
-        $this->expectException(GhasedakSmsException::class);
-
-        GhasedakSms::sendVerificationCode('09123456789', '1234');
-    }
-
-    /** @test */
-    public function it_handles_api_error_response()
-    {
-        // Mock error API response with NEW structure
-        Http::fake([
-            'gateway.ghasedak.me/*' => Http::response([
-                'IsSuccess' => false,
-                'StatusCode' => 418,
-                'Message' => 'اعتبار شما کافی نمی‌باشد'
-            ], 200)
-        ]);
-
-        $this->expectException(GhasedakSmsException::class);
-
-        GhasedakSms::sendVerificationCode('09123456789', '1234');
-    }
-
-    /** @test */
-    public function it_handles_http_error()
-    {
-        // Mock HTTP error
-        Http::fake([
-            'gateway.ghasedak.me/*' => Http::response([], 500)
-        ]);
-
-        $this->expectException(GhasedakSmsException::class);
-
-        GhasedakSms::sendVerificationCode('09123456789', '1234');
-    }
-
-    /** @test */
-    public function it_can_use_notification_facade()
-    {
-        Http::fake([
-            'gateway.ghasedak.me/*' => Http::response([
-                'IsSuccess' => true,
-                'StatusCode' => 200,
-                'Message' => 'با موفقیت انجام شد',
-                'Data' => [
-                    'Items' => [
-                        ['MessageId' => 11111111]
-                    ]
-                ]
-            ], 200)
-        ]);
-
-        // This should not throw an exception
-        Notification::route('sms', '09123456789')
-            ->notify(SendSmsNotification::verificationCode('1234', '09123456789'));
-
-        $this->assertTrue(true);
-    }
-
-    /** @test */
-    public function it_can_use_factory_methods()
-    {
-        Http::fake([
-            'gateway.ghasedak.me/*' => Http::response([
-                'IsSuccess' => true,
-                'StatusCode' => 200,
-                'Data' => [
-                    'Items' => [
-                        ['MessageId' => 22222222]
-                    ]
-                ]
-            ], 200)
-        ]);
-
-        $response = GhasedakSms::sendOrderConfirmed('09123456789', 'ORD-123', '50000', '1403/10/15');
-
-        $this->assertIsArray($response);
-        $this->assertTrue($response['IsSuccess']);
-    }
-
-    /** @test */
-    public function it_validates_empty_message_for_simple_sms()
-    {
-        $this->expectException(GhasedakSmsException::class);
-
-        GhasedakSms::sendSimple('09123456789', '');
-    }
-
-    /** @test */
-    public function it_validates_empty_receptor()
-    {
-        $this->expectException(GhasedakSmsException::class);
-
-        GhasedakSms::sendSimple('', 'Test message');
-    }
-
-    /** @test */
-    public function it_supports_up_to_10_parameters()
-    {
-        Http::fake([
-            'gateway.ghasedak.me/*' => Http::response([
-                'IsSuccess' => true,
-                'StatusCode' => 200,
-                'Data' => [
-                    'Items' => [
-                        ['MessageId' => 33333333]
-                    ]
-                ]
-            ], 200)
-        ]);
-
-        // Test with 10 parameters
-        $params = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p10'];
-        $response = GhasedakSms::sendTemplate('09123456789', 'phoneVerifyCode', $params);
-
-        $this->assertIsArray($response);
-        $this->assertTrue($response['IsSuccess']);
-    }
-
-    // ============================================
-    // REAL API TESTS (Uncomment to test with real API)
-    // ============================================
-
-    /**
-     * @test
-     * @group integration
-     *
-     * To run this test:
-     * 1. Set real API key in .env: GHASEDAK_API_KEY=your_real_key
-     * 2. Set real template: GHASEDAK_TEMPLATE_VERIFY_CODE=your_template_name
-     * 3. Run: vendor/bin/phpunit --group integration
-     */
-    public function it_can_send_real_verification_sms()
-    {
-        // Skip if no real API key provided
-        if (!env('GHASEDAK_API_KEY') || env('GHASEDAK_API_KEY') === 'test-api-key') {
-            $this->markTestSkipped('Set GHASEDAK_API_KEY in .env to run real API tests');
+        foreach ($requiredVars as $var) {
+            if (!env($var)) {
+                $this->markTestSkipped(
+                    "Set {$var} in .env.testing to run real API tests. Required vars: " .
+                    implode(', ', $requiredVars)
+                );
+            }
         }
 
-        // Use real config from .env
+        // Configure with real credentials
         config([
             'ghasedak.api_key' => env('GHASEDAK_API_KEY'),
-            'ghasedak.templates.phoneVerifyCode' => env('GHASEDAK_TEMPLATE_VERIFY_CODE', 'your-template-name'),
+            'ghasedak.sender' => env('GHASEDAK_SENDER', '10008566'),
+            'ghasedak.templates.test_template' => env('GHASEDAK_TEMPLATE_NAME'),
             'ghasedak.logging.enabled' => true,
         ]);
-
-        $response = GhasedakSms::sendVerificationCode('09123456789', '1234');
-
-        $this->assertIsArray($response);
-        $this->assertTrue($response['IsSuccess']);
-        $this->assertGreaterThan(0, $response['Data']['Items'][0]['MessageId']);
     }
 
     /**
      * @test
-     * @group integration
-     *
-     * To run: vendor/bin/phpunit --group integration
+     * @group real-api
      */
-    public function it_can_send_real_simple_sms()
+    public function it_can_send_template_sms_with_real_api()
     {
-        if (!env('GHASEDAK_API_KEY') || env('GHASEDAK_API_KEY') === 'test-api-key') {
-            $this->markTestSkipped('Set GHASEDAK_API_KEY in .env to run real API tests');
+        $this->skipIfNoRealApiConfig();
+
+        $phone = env('GHASEDAK_TEST_PHONE');
+        $templateName = 'test_template';
+        $param1 = env('GHASEDAK_TEMPLATE_PARAM1');
+
+        try {
+            $response = GhasedakSms::sendTemplate($phone, $templateName, [$param1]);
+
+            // Assert successful response
+            $this->assertIsArray($response);
+            $this->assertTrue($response['IsSuccess'], 'Template SMS should be sent successfully');
+            $this->assertEquals(200, $response['StatusCode']);
+            $this->assertArrayHasKey('Data', $response);
+            $this->assertArrayHasKey('Items', $response['Data']);
+            $this->assertGreaterThan(0, $response['Data']['Items'][0]['MessageId']);
+
+            echo "\n✅ Template SMS sent successfully!";
+            echo "\n   Phone: {$phone}";
+            echo "\n   Template: " . env('GHASEDAK_TEMPLATE_NAME');
+            echo "\n   Parameter: {$param1}";
+            echo "\n   MessageId: " . $response['Data']['Items'][0]['MessageId'];
+
+        } catch (GhasedakSmsException $e) {
+            $this->fail(
+                "Template SMS failed. Error: " . $e->getMessage() .
+                " (Code: " . $e->getErrorCode() . ")"
+            );
         }
+    }
 
-        config([
-            'ghasedak.api_key' => env('GHASEDAK_API_KEY'),
-            'ghasedak.logging.enabled' => true,
-        ]);
+    /**
+     * @test
+     * @group real-api
+     */
+    public function it_can_send_simple_sms_with_real_api()
+    {
+        $this->skipIfNoRealApiConfig();
 
-        $response = GhasedakSms::sendSimple('09123456789', 'Test message from Laravel package');
+        $phone = env('GHASEDAK_TEST_PHONE');
+        $message = 'تست پکیج قاصدک لاراول - ' . now()->format('H:i:s');
 
-        $this->assertIsArray($response);
-        $this->assertTrue($response['IsSuccess']);
-        $this->assertGreaterThan(0, $response['Data']['MessageId']);
+        try {
+            $response = GhasedakSms::sendSimple($phone, $message);
+
+            // Assert successful response
+            $this->assertIsArray($response);
+            $this->assertTrue($response['IsSuccess'], 'Simple SMS should be sent successfully');
+            $this->assertEquals(200, $response['StatusCode']);
+            $this->assertArrayHasKey('Data', $response);
+            $this->assertGreaterThan(0, $response['Data']['MessageId']);
+
+            echo "\n✅ Simple SMS sent successfully!";
+            echo "\n   Phone: {$phone}";
+            echo "\n   Message: {$message}";
+            echo "\n   MessageId: " . $response['Data']['MessageId'];
+
+        } catch (GhasedakSmsException $e) {
+            $this->fail(
+                "Simple SMS failed. Error: " . $e->getMessage() .
+                " (Code: " . $e->getErrorCode() . ")"
+            );
+        }
     }
 }

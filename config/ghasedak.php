@@ -62,7 +62,7 @@ return [
     */
 
     'logging' => [
-        'enabled' => env('GHASEDAK_LOGGING', true),
+        'enabled' => env('GHASEDAK_LOGGING', false),
         'channel' => env('LOG_CHANNEL', 'stack'),
     ],
 ];

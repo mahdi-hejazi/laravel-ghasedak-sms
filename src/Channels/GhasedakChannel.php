@@ -63,12 +63,14 @@ class GhasedakChannel
         $template = $this->getTemplate($data['template']);
         $parameters = $data['parameters'] ?? []; // Support up to 10 parameters
 
-        // Clean parameters as before
         foreach ($parameters as $key => $param) {
-            $text = preg_replace('/[^\w\s]+/u', '', $param);
+            $text = strval($param);
+            $text = preg_replace('/[^\p{L}\p{N}\s\-_.]/u', '', $text);
             $text = preg_replace('/\s+/', '.', $text);
             $parameters[$key] = str_replace('_', '.', $text);
         }
+
+        $receptor = \MahdiHejazi\LaravelGhasedakSms\Helpers\PhoneHelper::clean($receptor);
 
         try {
             $requestData = [
@@ -89,11 +91,12 @@ class GhasedakChannel
             }
 
 
-            // Log if more than 10 parameters provided (for debugging)
-            if (count($parameters) > 10 && $this->shouldLog()) {
-                Log::warning('Ghasedak template SMS: More than 10 parameters provided, using only first 10', [
-                    'total_params' => count($parameters),
-                    'template' => $template
+            // Log request data for debugging
+            if ($this->shouldLog()) {
+                Log::info('Ghasedak Template SMS Request', [
+                    'url' => $this->config['api']['verify_url'],
+                    'data' => $requestData,
+                    'receptor' => $receptor
                 ]);
             }
 
@@ -101,7 +104,7 @@ class GhasedakChannel
             // Send HTTP request to Ghasedak API
             $response = Http::timeout($this->config['api']['timeout'] ?? 30)
                 ->withHeaders([
-                    'apikey' => $this->apikey,
+                    'ApiKey' => $this->apikey,
                     'Content-Type' => 'application/json',
                 ])->asJson()->post($this->config['api']['verify_url'], $requestData);
 
@@ -111,13 +114,22 @@ class GhasedakChannel
                     Log::error('Ghasedak Template SMS HTTP Error', [
                         'status' => $response->status(),
                         'body' => $response->body(),
-                        'receptor' => $receptor
+                        'receptor' => $receptor,
+                        'request_data' => $requestData
                     ]);
                 }
                 throw new GhasedakSmsException('http_error', __('ghasedak::errors.http_error', ['status' => $response->status()]));
             }
 
             $responseBody = $response->json();
+
+            // Log response for debugging
+            if ($this->shouldLog()) {
+                Log::info('Ghasedak Template SMS Response', [
+                    'response' => $responseBody,
+                    'receptor' => $receptor
+                ]);
+            }
 
             // Check API response
             if (!isset($responseBody['IsSuccess']) || $responseBody['IsSuccess'] !== true) {
@@ -183,6 +195,8 @@ class GhasedakChannel
             throw new GhasedakSmsException('empty_receptor', __('ghasedak::errors.empty_receptor'));
         }
 
+        $receptor = \MahdiHejazi\LaravelGhasedakSms\Helpers\PhoneHelper::clean($receptor);
+
         try {
             // Prepare request data
             $requestData = [
@@ -195,12 +209,16 @@ class GhasedakChannel
 
             // Add optional send date if provided
             if (isset($data['senddate']) && !empty($data['senddate'])) {
-                $requestData['senddate'] = $data['senddate']; // ISO 8601 format
+                $requestData['sendDate'] = $data['senddate']; // ISO 8601 format
             }
 
-            // Add optional checking IDs if provided
-            if (isset($data['checkingids']) && !empty($data['checkingids'])) {
-                $requestData['checkingids'] = $data['checkingids'];
+            // Log request data
+            if ($this->shouldLog()) {
+                Log::info('Ghasedak Simple SMS Request', [
+                    'url' => $this->config['api']['simple_url'],
+                    'data' => $requestData,
+                    'receptor' => $receptor
+                ]);
             }
 
             // Send HTTP request to Ghasedak API
@@ -217,13 +235,22 @@ class GhasedakChannel
                     Log::error('Ghasedak Simple SMS HTTP Error', [
                         'status' => $response->status(),
                         'body' => $response->body(),
-                        'receptor' => $receptor
+                        'receptor' => $receptor,
+                        'request_data' => $requestData
                     ]);
                 }
                 throw new GhasedakSmsException('http_error', __('ghasedak::errors.http_error', ['status' => $response->status()]));
             }
 
             $responseBody = $response->json();
+            // Log response
+            if ($this->shouldLog()) {
+                Log::info('Ghasedak Simple SMS Response', [
+                    'response' => $responseBody,
+                    'receptor' => $receptor
+                ]);
+            }
+
 
             // Check API response
             if (!isset($responseBody['IsSuccess']) || $responseBody['IsSuccess'] !== true) {
