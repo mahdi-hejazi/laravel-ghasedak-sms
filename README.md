@@ -2,6 +2,7 @@
 
 Modern Laravel package for Ghasedak SMS API with template and simple SMS support.
 
+packagist url: https://packagist.org/packages/mahdi-hejazi/laravel-ghasedak-sms
 ## Features
 
 - ✅ **Template-based SMS** (OTP, verification codes, etc.)

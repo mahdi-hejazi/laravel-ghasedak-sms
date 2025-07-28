@@ -1,6 +1,6 @@
 {
     "name": "mahdi-hejazi/laravel-ghasedak-sms",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "description": "Modern Laravel package for Ghasedak SMS API with template and simple SMS support",
     "keywords": [
         "laravel",
