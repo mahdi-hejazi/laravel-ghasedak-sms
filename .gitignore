@@ -1,0 +1,11 @@
+/vendor
+/coverage
+/.phpunit.result.cache
+/composer.lock
+/.DS_Store
+Thumbs.db
+/build
+.phpunit.cache
+/tests/.env
+/.env
+/.env.testing
