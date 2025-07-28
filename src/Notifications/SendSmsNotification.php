@@ -40,28 +40,10 @@ class SendSmsNotification extends Notification
     }
 
     // Static factory methods for common use cases
-    public static function verificationCode($code, $phone)
-    {
-        return new self('phoneVerifyCode', $phone, [$code]);
-    }
+//    public static function verificationCode($code, $phone)
+//    {
+//        return new self('phoneVerifyCode', $phone, [$code]);
+//    }
 
-    public static function orderConfirmed($phone, $orderId, $amount, $date)
-    {
-        return new self('orderConfirmed', $phone, [$orderId, $amount, $date]);
-    }
 
-    public static function thankYou($phone, $customerName)
-    {
-        return new self('ThankForBuy', $phone, [$customerName]);
-    }
-
-    public static function passwordReset($phone, $resetCode)
-    {
-        return new self('passwordReset', $phone, [$resetCode]);
-    }
-
-    public static function welcome($phone, $userName)
-    {
-        return new self('welcomeMessage', $phone, [$userName]);
-    }
 }

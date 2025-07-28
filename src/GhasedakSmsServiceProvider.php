@@ -38,6 +38,6 @@ class GhasedakSmsServiceProvider extends ServiceProvider
 
     public function provides()
     {
-        return ['ghasedak-sms'];
+        return ['ghasedak-sms', GhasedakSmsService::class];
     }
 }

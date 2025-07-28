@@ -51,7 +51,7 @@ class GhasedakSmsException extends Exception
             429 => __('ghasedak::errors.429'),
             451 => __('ghasedak::errors.451'),
             500 => __('ghasedak::errors.500'),
-            
+
             // Custom error codes
             'invalid template' => __('ghasedak::errors.invalid_template'),
             'apikey is invalid' => __('ghasedak::errors.invalid_apikey'),

@@ -27,7 +27,7 @@ return [
         'insufficient_balance' => 'Insufficient balance',
         'invalid_number' => 'Invalid phone number',
         'method_not_found' => 'Required method not found in notification class',
-        'template_not_found' => 'Template ":template" not found',
+        'template_not_found_in_config' => 'Template ":template" not found. please add it to config file.',
         'apikey_missing' => 'Ghasedak API key is not configured',
         'empty_message' => 'Message text cannot be empty',
         'empty_receptor' => 'Recipient number cannot be empty',

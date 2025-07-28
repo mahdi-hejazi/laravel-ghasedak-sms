@@ -27,13 +27,13 @@ return [
 
     'templates' => [
         'phoneVerifyCode' => env('GHASEDAK_TEMPLATE_VERIFY_CODE', ''),
-        'orderCreated' => env('GHASEDAK_TEMPLATE_ORDER_CREATED', ''),
-        'orderConfirmed' => env('GHASEDAK_TEMPLATE_ORDER_CONFIRMED', ''),
-        'orderDeliveryInfo' => env('GHASEDAK_TEMPLATE_DELIVERY_INFO', ''),
-        'orderRequestCreated' => env('GHASEDAK_TEMPLATE_ORDER_REQUEST', ''),
-        'ThankForBuy' => env('GHASEDAK_TEMPLATE_THANK_YOU', ''),
-        'passwordReset' => env('GHASEDAK_TEMPLATE_PASSWORD_RESET', ''),
-        'welcomeMessage' => env('GHASEDAK_TEMPLATE_WELCOME', ''),
+//        'orderCreated' => env('GHASEDAK_TEMPLATE_ORDER_CREATED', ''),
+//        'orderConfirmed' => env('GHASEDAK_TEMPLATE_ORDER_CONFIRMED', ''),
+//        'orderDeliveryInfo' => env('GHASEDAK_TEMPLATE_DELIVERY_INFO', ''),
+//        'orderRequestCreated' => env('GHASEDAK_TEMPLATE_ORDER_REQUEST', ''),
+//        'ThankForBuy' => env('GHASEDAK_TEMPLATE_THANK_YOU', ''),
+//        'passwordReset' => env('GHASEDAK_TEMPLATE_PASSWORD_RESET', ''),
+//        'welcomeMessage' => env('GHASEDAK_TEMPLATE_WELCOME', ''),
     ],
 
     /*
@@ -46,7 +46,8 @@ return [
     */
 
     'api' => [
-        'verify_url' => 'https://gateway.ghasedak.me/rest/api/v1/WebService/SendOtpWithParams',
+        'new_otp_url' => 'https://gateway.ghasedak.me/rest/api/v1/WebService/SendOtpSMS',
+        'otp_url' => 'https://gateway.ghasedak.me/rest/api/v1/WebService/SendOtpWithParams',
         'simple_url' => 'https://gateway.ghasedak.me/rest/api/v1/WebService/SendSingleSMS',
         'account_info_url' => 'https://gateway.ghasedak.me/rest/api/v1/WebService/GetAccountInformation',
         'timeout' => 30,

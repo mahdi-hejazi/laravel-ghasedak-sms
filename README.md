@@ -25,68 +25,6 @@ Modern Laravel package for Ghasedak SMS API with template and simple SMS support
 composer require mahdi-hejazi/laravel-ghasedak-sms
 ```
 
-### Docker Development
-
-If you're developing with Docker, you can use the included Docker setup:
-
-```bash
-# Clone the package
-git clone https://github.com/mahdi-hejazi/laravel-ghasedak-sms.git
-cd laravel-ghasedak-sms
-
-# Build and start containers
-docker-compose up -d --build
-
-# Install dependencies
-docker-compose exec php composer install
-
-# Run tests
-docker-compose exec php vendor/bin/phpunit
-
-# Stop containers
-docker-compose down
-```
-
-### Docker Files Included
-
-The package includes a lightweight Docker setup for development:
-
-**Dockerfile:**
-```dockerfile
-FROM php:8.2-apache
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    curl \
-    unzip \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Composer
-RUN curl -sS https://getcomposer.org/installer | php && \
-    mv composer.phar /usr/local/bin/composer
-
-WORKDIR /app
-```
-
-**docker-compose.yml:**
-```yaml
-version: '3.8'
-
-services:
-    php:
-        build:
-            context: .
-            dockerfile: Dockerfile
-        volumes:
-            - ./:/app
-        working_dir: /app
-        command: tail -f /dev/null
-
-networks:
-    default:
-        driver: bridge
-```
-
 ### Publish Configuration
 
 ```bash
@@ -104,35 +42,229 @@ GHASEDAK_TEMPLATE_VERIFY_CODE=your_template_name
 ```
 
 ## Usage
+# OTP SMS Usage Examples
 
-### Template-based SMS (OTP/Verification)
+## New OTP API Features
+
+The new OTP API endpoint supports:
+
+- ✅ **Named parameters** (instead of positional param1, param2, etc.)
+- ✅ **Multiple recipients** in single request
+- ✅ **Client reference IDs** for tracking
+- ✅ **Scheduled sending**
+- ✅ **Voice messages**
+- ✅ **Better response format** with cost information
+
+## Basic Usage
+
+### 0. Add template to Laravel Config
 
 ```php
-use MahdiHejazi\LaravelGhasedakSms\Notifications\SendSmsNotification;
+// config/ghasedak.php
+'templates' => [
+    'phoneVerifyCode' => 'phoneVerifyCode',
+    'loginCode' => 'loginCode', 
+    'appointmentReminder' => 'appointmentReminder',
+    'orderConfirmed' => 'orderConfirmed',
+],
+```
 
-// Using Static factory methods in your notification
-$user->notify(SendSmsNotification::verificationCode('1234', '09123456789'));
+### 1. Single OTP with Named Parameters
 
-// Or generic approach
-$user->notify(new SendSmsNotification('phoneVerifyCode', '09123456789', ['1234']));
-
-// Using facade
+```php
 use MahdiHejazi\LaravelGhasedakSms\Facades\GhasedakSms;
 
-GhasedakSms::sendVerificationCode('09123456789', '1234');
+// Send verification code using new OTP API
+$response = GhasedakSms::sendOtp('09123456789', 'phoneVerifyCode', [
+    'Code' => '1234'
+]);
+
+// Send login code with user name
+$response = GhasedakSms::sendOtp('09123456789', 'loginCode', [
+    'Code' => '5678',
+    'Name' => 'احمد رضایی'
+]);
 ```
 
-### Simple SMS
+
+### 2. Using Notification Classes
 
 ```php
-use MahdiHejazi\LaravelGhasedakSms\Notifications\SimpleSmsNotification;
+use MahdiHejazi\LaravelGhasedakSms\Notifications\OtpSmsNotification;
+
+// Single verification code
+$user->notify(OtpSmsNotification::verificationCode('09123456789', '1234'));
+
+// Appointment reminder
+$user->notify(OtpSmsNotification::appointmentReminder(
+    '09123456789', 
+    'دکتر احمدی', 
+    '1403/10/15', 
+    '14:30'
+));
+
+// Order confirmation
+$user->notify(OtpSmsNotification::orderConfirmation(
+    '09123456789', 
+    'ORD-12345', 
+    '250000 تومان'
+));
+
+// Welcome message
+$user->notify(OtpSmsNotification::welcome('09123456789', 'علی احمدی'));
+
+// Password reset
+$user->notify(OtpSmsNotification::passwordReset('09123456789', 'RESET123'));
+```
+
+### 3. Advanced Features
+
+#### Scheduled OTP
+```php
+// Send OTP at specific time (ISO 8601 format)
+$sendDate = '2024-12-25T14:30:00Z';
+$response = GhasedakSms::sendScheduledOtp(
+    '09123456789', 
+    'phoneVerifyCode', 
+    ['Code' => '1234'], 
+    $sendDate
+);
 
 // Using notification
-$user->notify(new SimpleSmsNotification('09123456789', 'Your custom message'));
-
-// Using facade
-GhasedakSms::sendSimple('09123456789', 'Your custom message');
+$user->notify(OtpSmsNotification::scheduledVerificationCode(
+    '09123456789', 
+    '1234', 
+    '2024-12-25T14:30:00Z'
+));
 ```
+
+#### Voice OTP
+```php
+// Send voice verification code
+$response = GhasedakSms::sendVoiceOtp('09123456789', 'phoneVerifyCode', [
+    'Code' => '1234'
+]);
+
+// Using notification
+$user->notify(OtpSmsNotification::voiceVerificationCode('09123456789', '1234'));
+```
+
+#### Custom Client Reference ID
+```php
+// Track your OTP with custom reference ID
+$clientRefId = 'USER_123_VERIFY_' . time();
+$response = GhasedakSms::sendOtpVerificationCode('09123456789', '1234', $clientRefId);
+
+// Later, you can use this reference ID to check status
+```
+
+## Template Configuration (old version of OTP)
+
+### 1. Create Templates in Ghasedak Panel
+
+Create templates at [ghasedak.me](https://ghasedak.me) with named parameters:
+
+**Example Templates:**
+
+```text
+Template Name: phoneVerifyCode
+Template Text: کد تایید شما: {{Code}}
+
+Template Name: loginCode  
+Template Text: سلام {{Name}}، کد ورود شما: {{Code}}
+
+Template Name: appointmentReminder
+Template Text: یادآوری قرار ملاقات با {{Doctor}} در تاریخ {{Date}} ساعت {{Time}}
+
+Template Name: orderConfirmed
+Template Text: سفارش {{OrderNumber}} به مبلغ {{Amount}} تایید شد
+```
+
+### 2. Add to Laravel Config
+
+```php
+// config/ghasedak.php
+'templates' => [
+    'phoneVerifyCode' => 'phoneVerifyCode',
+    'loginCode' => 'loginCode', 
+    'appointmentReminder' => 'appointmentReminder',
+    'orderConfirmed' => 'orderConfirmed',
+],
+```
+
+## Response Format
+
+The new OTP API returns detailed response:
+
+```php
+$response = [
+    'isSuccess' => true,
+    'statusCode' => 200,
+    'message' => 'با موفقیت انجام شد',
+    'data' => [
+        'items' => [
+            [
+                'messageBody' => 'کد تایید شما: 1234',
+                'receptor' => '09123456789',
+                'cost' => 850,
+                'messageId' => '23304980',
+                'clientReferenceId' => 'USER_123_VERIFY_1703497185',
+                'sendDate' => '2024-12-25T09:59:45.599126+03:30'
+            ]
+        ],
+        'totalCost' => 850
+    ]
+];
+```
+
+## Error Handling
+
+```php
+use MahdiHejazi\LaravelGhasedakSms\Exceptions\GhasedakSmsException;
+
+try {
+    $response = GhasedakSms::sendOtpVerificationCode('09123456789', '1234');
+    
+    // Check response
+    if ($response['isSuccess']) {
+        $messageId = $response['data']['items'][0]['messageId'];
+        $cost = $response['data']['totalCost'];
+        echo "SMS sent successfully! ID: {$messageId}, Cost: {$cost}";
+    }
+    
+} catch (GhasedakSmsException $e) {
+    echo "Error: " . $e->getMessage();
+    echo "Code: " . $e->getErrorCode();
+}
+```
+
+## Migration from Old API
+
+### Before (Old Template API):
+```php
+// Old way with positional parameters
+GhasedakSms::sendTemplate('09123456789', 'phoneVerifyCode', ['1234']);
+```
+
+### After (New OTP API):
+```php
+// New way with named parameters
+GhasedakSms::sendOtp('09123456789', 'phoneVerifyCode', ['Code' => '1234']);
+
+// Or using the convenience method
+GhasedakSms::sendOtpVerificationCode('09123456789', '1234');
+```
+
+
+## Best Practices
+
+1. **Use meaningful client reference IDs** for tracking
+2. **Test templates** in Ghasedak panel before using in code
+3. **Handle errors gracefully** with try-catch blocks
+4. **Monitor costs** using the totalCost field in responses
+5. **Use bulk methods** for multiple recipients to reduce API calls
+6. **Clean parameter values** - avoid special characters
+7. **Use scheduled sending** for time-sensitive messages
 
 ### Available Factory Methods
 

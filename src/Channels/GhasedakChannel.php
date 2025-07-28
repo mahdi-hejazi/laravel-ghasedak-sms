@@ -7,13 +7,14 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use function PHPUnit\Framework\isNull;
 
 class GhasedakChannel
 {
     use Queueable;
 
-    private $apikey;
-    private $defaultSender;
+    private string $apikey;
+    private string $defaultSender;
     private $templates;
     private $config;
 
@@ -25,7 +26,9 @@ class GhasedakChannel
         // Load all config once in constructor
         $this->config = config('ghasedak');
         $this->apikey = $this->config['api_key'];
-        $this->defaultSender = $this->config['sender'];
+        if(!is_null($this->config['sender'])) {
+            $this->defaultSender = $this->config['sender'];
+        };
         $this->templates = $this->config['templates'] ?? [];
 
         // Validate API key exists
@@ -39,6 +42,10 @@ class GhasedakChannel
      */
     public function send($notifiable, Notification $notification)
     {
+        // Check if notification supports OTP SMS (new format)
+        if (method_exists($notification, 'toGhasedakOtpSms')) {
+            return $this->sendOtpSms($notifiable, $notification);
+        }
         // Check if notification supports template-based SMS (OTP)
         if (method_exists($notification, 'toGhasedakSms')) {
             return $this->sendTemplateSms($notifiable, $notification);
@@ -50,6 +57,133 @@ class GhasedakChannel
         }
 
         throw new GhasedakSmsException('method_not_found', __('ghasedak::errors.method_not_found'));
+    }
+
+    /**
+     * Send OTP SMS using new API format with inputs parameters
+     * @throws GhasedakSmsException
+     */
+    private function sendOtpSms($notifiable, Notification $notification)
+    {
+        $data = $notification->toGhasedakOtpSms($notifiable);
+        $receptors = $data['receptors']; // Array of [mobile, clientReferenceId]
+        $template = $this->getTemplate($data['template']);
+        $inputs = $data['inputs'] ?? []; // Array of [param => value]
+        $sendDate = $data['sendDate'] ?? null;
+        $isVoice = $data['isVoice'] ?? false;
+        $udh = $data['udh'] ?? false;
+
+        // Clean phone numbers
+        foreach ($receptors as &$receptor) {
+            $receptor['mobile'] = \MahdiHejazi\LaravelGhasedakSms\Helpers\PhoneHelper::clean($receptor['mobile']);
+        }
+
+        // Format inputs for API
+        $formattedInputs = [];
+        foreach ($inputs as $param => $value) {
+            $cleanValue = strval($value);
+            $cleanValue = preg_replace('/[^\p{L}\p{N}\s\-_.]/u', '', $cleanValue);
+            $cleanValue = preg_replace('/\s+/', '.', $cleanValue);
+            $cleanValue = str_replace('_', '.', $cleanValue);
+
+            $formattedInputs[] = [
+                'param' => $param,
+                'value' => $cleanValue
+            ];
+        }
+
+        try {
+            $requestData = [
+                'receptors' => $receptors,
+                'templateName' => $template,
+                'inputs' => $formattedInputs,
+                'isVoice' => $isVoice,
+                'udh' => $udh
+            ];
+
+            // Add sendDate if provided
+            if ($sendDate) {
+                $requestData['sendDate'] = $sendDate;
+            }
+
+            // Log request data for debugging
+            if ($this->shouldLog()) {
+                Log::info('Ghasedak OTP SMS Request', [
+                    'url' => $this->config['api']['new_otp_url'],
+                    'data' => $requestData,
+                    'receptors_count' => count($receptors)
+                ]);
+            }
+
+            // Send HTTP request to Ghasedak API
+            $response = Http::timeout($this->config['api']['timeout'] ?? 30)
+                ->withHeaders([
+                    'ApiKey' => $this->apikey,
+                    'Content-Type' => 'application/json',
+                ])->asJson()->post($this->config['api']['new_otp_url'], $requestData);
+
+            // Check if request was successful
+            if (!$response->successful()) {
+                if ($this->shouldLog()) {
+                    Log::error('Ghasedak OTP SMS HTTP Error', [
+                        'status' => $response->status(),
+                        'body' => $response->body(),
+                        'request_data' => $requestData
+                    ]);
+                }
+                throw new GhasedakSmsException('http_error', __('ghasedak::errors.http_error', ['status' => $response->status()]));
+            }
+
+            $responseBody = $response->json();
+
+            // Log response for debugging
+            if ($this->shouldLog()) {
+                Log::info('Ghasedak OTP SMS Response', [
+                    'response' => $responseBody,
+                    'receptors_count' => count($receptors)
+                ]);
+            }
+
+            // Check API response
+            if (!isset($responseBody['isSuccess']) || $responseBody['isSuccess'] !== true) {
+                $errorCode = $responseBody['statusCode'] ?? 'unknown';
+                if ($this->shouldLog()) {
+                    Log::error('Ghasedak OTP SMS API Error', [
+                        'error' => $errorCode,
+                        'response' => $responseBody
+                    ]);
+                }
+
+                throw new GhasedakSmsException($errorCode, __('ghasedak::errors.template_send_failed'));
+            }
+
+            // Validate response data
+            if (!isset($responseBody['data']['items']) || empty($responseBody['data']['items'])) {
+                throw new GhasedakSmsException('send_failed', __('ghasedak::errors.send_failed'));
+            }
+
+            if ($this->shouldLog()) {
+                Log::info('OTP SMS sent successfully', [
+                    'total_cost' => $responseBody['data']['totalCost'] ?? 0,
+                    'items_count' => count($responseBody['data']['items']),
+                    'template' => $template
+                ]);
+            }
+
+            return $responseBody;
+
+        } catch (GhasedakSmsException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            if ($this->shouldLog()) {
+                Log::error('Failed to send OTP SMS', [
+                    'error' => $e->getMessage(),
+                    'template' => $template,
+                    'receptors_count' => count($receptors)
+                ]);
+            }
+            throw new GhasedakSmsException('system_error', $e->getMessage());
+        }
     }
 
     /**
@@ -94,19 +228,25 @@ class GhasedakChannel
             // Log request data for debugging
             if ($this->shouldLog()) {
                 Log::info('Ghasedak Template SMS Request', [
-                    'url' => $this->config['api']['verify_url'],
+                    'url' => $this->config['api']['otp_url'],
                     'data' => $requestData,
                     'receptor' => $receptor
                 ]);
             }
-
 
             // Send HTTP request to Ghasedak API
             $response = Http::timeout($this->config['api']['timeout'] ?? 30)
                 ->withHeaders([
                     'ApiKey' => $this->apikey,
                     'Content-Type' => 'application/json',
-                ])->asJson()->post($this->config['api']['verify_url'], $requestData);
+                ])   ->beforeSending(function ($request, $options) {
+                    Log::info('Ghasedak API Request', [
+                        'url' => $request->url(),
+                        'method' => $request->method(),
+                        'headers' => $request->headers(),
+                        'body' => $request->body(),
+                    ]);
+                })->asJson()->post($this->config['api']['otp_url'], $requestData);
 
             // Check if request was successful
             if (!$response->successful()) {
@@ -114,6 +254,7 @@ class GhasedakChannel
                     Log::error('Ghasedak Template SMS HTTP Error', [
                         'status' => $response->status(),
                         'body' => $response->body(),
+                        'headers' => $response->headers(),
                         'receptor' => $receptor,
                         'request_data' => $requestData
                     ]);
@@ -202,7 +343,7 @@ class GhasedakChannel
             $requestData = [
                 'message' => $message,
                 'receptor' => $receptor,
-                'lineNumber' => $sender,
+                'sender' => $sender,
                 'clientReferenceId' => uniqid(),
                 'udh' => false
             ];
@@ -304,10 +445,10 @@ class GhasedakChannel
      */
     private function getTemplate($templateKey)
     {
-        $template = $this->templates[$templateKey] ?? '';
+        $template = $this->templates[$templateKey] ?? $templateKey; //if wasn,t in config file use the key as template name
 
         if (empty($template)) {
-            throw new GhasedakSmsException('template_not_found', __('ghasedak::errors.template_not_found', ['template' => $templateKey]));
+            throw new GhasedakSmsException('template_not_found_in_config', __('ghasedak::errors.template_not_found', ['template' => $templateKey]));
         }
 
         return $template;

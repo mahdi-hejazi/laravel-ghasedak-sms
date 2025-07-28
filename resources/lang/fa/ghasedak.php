@@ -27,7 +27,7 @@ return [
         'insufficient_balance' => 'اعتبار کافی نیست',
         'invalid_number' => 'شماره تلفن نامعتبر است',
         'method_not_found' => 'متد مورد نیاز در کلاس اعلان یافت نشد',
-        'template_not_found' => 'قالب ":template" یافت نشد',
+        'template_not_found_in_config' => 'قالب ":template" یافت نشد. لطفا آنرا به فایل کانفیگ اضافه کنید.',
         'apikey_missing' => 'کلید API قاصدک تنظیم نشده است',
         'empty_message' => 'متن پیام نمی تواند خالی باشد',
         'empty_receptor' => 'شماره گیرنده نمی تواند خالی باشد',

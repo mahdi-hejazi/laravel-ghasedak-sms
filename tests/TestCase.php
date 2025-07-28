@@ -20,7 +20,7 @@ abstract class TestCase extends Orchestra
         config()->set('ghasedak.templates.orderCreated', 'order-template');
         config()->set('ghasedak.templates.orderConfirmed', 'order-confirmed');
         config()->set('ghasedak.templates.test_template', env('GHASEDAK_TEMPLATE_NAME', 'test-template'));
-        config()->set('ghasedak.api.verify_url', 'https://gateway.ghasedak.me/rest/api/v1/WebService/SendOtpWithParams');
+        config()->set('ghasedak.api.otp_url', 'https://gateway.ghasedak.me/rest/api/v1/WebService/SendOtpWithParams');
         config()->set('ghasedak.api.simple_url', 'https://gateway.ghasedak.me/rest/api/v1/WebService/SendSingleSMS');
         config()->set('ghasedak.api.account_info_url', 'https://gateway.ghasedak.me/rest/api/v1/WebService/GetAccountInformation');
         config()->set('ghasedak.logging.enabled', env('GHASEDAK_LOGGING', false));

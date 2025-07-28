@@ -165,7 +165,7 @@ class GhasedakRealApiTest extends TestCase
 
         echo "\n🔧 Testing API Connectivity:";
         echo "\n   API Key: " . substr(env('GHASEDAK_API_KEY'), 0, 10) . "...";
-        echo "\n   Verify URL: " . config('ghasedak.api.verify_url');
+        echo "\n   OTP URL: " . config('ghasedak.api.otp_url');
         echo "\n   Simple URL: " . config('ghasedak.api.simple_url');
 
         // This test just checks if we can instantiate the service without errors
